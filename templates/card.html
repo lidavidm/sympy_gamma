@@ -39,7 +39,8 @@
          data-card-name="{{ cell.card|safe }}"
          data-variable="{{ cell.var|escape }}"
          data-expr="{{ input|escape }}"
-         data-parameters="{{ cell.parameters|safe }}">
+         data-parameters="{{ cell.parameters|safe }}"
+         data-arguments="{{ cell.arguments|urlencode }}">
       {% if cell.pre_output %}
       <div class="cell_pre_output">
         <script type="math/tex"> {{cell.pre_output|safe }} = </script>

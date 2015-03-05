@@ -487,3 +487,28 @@ def close_matches(s, global_dict):
     if has_result:
         return sympy_tokenize.untokenize(result).strip()
     return None
+
+
+def mathjax_latex(*args):
+    tex_code = []
+    for obj in args:
+        if hasattr(obj, 'as_latex'):
+            tex_code.append(obj.as_latex())
+        else:
+            tex_code.append(sympy.latex(obj))
+
+    tag = '<script type="math/tex; mode=display">'
+    if len(args) == 1:
+        obj = args[0]
+        if (isinstance(obj, sympy.Basic) and
+            not obj.free_symbols and not obj.is_Integer and
+            not obj.is_Float and
+            obj.is_finite is not False and
+            hasattr(obj, 'evalf')):
+            tag = '<script type="math/tex; mode=display" data-numeric="true" ' \
+                  'data-output-repr="{}" data-approximation="{}">'.format(
+                      repr(obj), sympy.latex(obj.evalf(15)))
+
+    tex_code = ''.join(tex_code)
+
+    return ''.join([tag, tex_code, '</script>'])

@@ -1,0 +1,3 @@
+class ResultFormatter(object):
+    """
+    """

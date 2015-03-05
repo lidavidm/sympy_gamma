@@ -1,11 +1,13 @@
 import sys
+import json
 import traceback
 import collections
 from utils import Eval, latexify, arguments, removeSymPy, \
     custom_implicit_transformation, synonyms, OTHER_SYMPY_FUNCTIONS, \
-    close_matches
-from resultsets import find_result_set, get_card, format_by_type, \
+    close_matches, mathjax_latex
+from resultsets import find_result_set, format_by_type, \
     is_function_handled, find_learn_more_set
+from .resultcards import get_card
 from sympy import latex, series, sympify, solve, Derivative, \
     Integral, Symbol, diff, integrate
 import sympy
@@ -18,31 +20,6 @@ from sympy import *
 import sympy
 from sympy.solvers.diophantine import diophantine
 """
-
-
-def mathjax_latex(*args):
-    tex_code = []
-    for obj in args:
-        if hasattr(obj, 'as_latex'):
-            tex_code.append(obj.as_latex())
-        else:
-            tex_code.append(latex(obj))
-
-    tag = '<script type="math/tex; mode=display">'
-    if len(args) == 1:
-        obj = args[0]
-        if (isinstance(obj, sympy.Basic) and
-            not obj.free_symbols and not obj.is_Integer and
-            not obj.is_Float and
-            obj.is_finite is not False and
-            hasattr(obj, 'evalf')):
-            tag = '<script type="math/tex; mode=display" data-numeric="true" ' \
-                  'data-output-repr="{}" data-approximation="{}">'.format(
-                      repr(obj), latex(obj.evalf(15)))
-
-    tex_code = ''.join(tex_code)
-
-    return ''.join([tag, tex_code, '</script>'])
 
 
 class SymPyGamma(object):
@@ -219,7 +196,7 @@ class SymPyGamma(object):
         })
 
         if cards:
-            if any(get_card(c).is_multivariate() for c in cards):
+            if any(c.multivariate for c in cards):
                 result[-1].update({
                     "num_variables": len(components['variables']),
                     "variables": map(repr, components['variables']),
@@ -261,21 +238,16 @@ class SymPyGamma(object):
                     {"title": "Simplification", "input": "",
                      "output": mathjax_latex(evaluated)})
 
-            for card_name in cards:
-                card = get_card(card_name)
-
-                if not card:
-                    continue
-
+            for card in cards:
                 try:
                     result.append({
-                        'card': card_name,
+                        'card': card.name,
                         'var': repr(var),
-                        'title': card.format_title(evaluated),
-                        'input': card.format_input(repr(evaluated), components),
-                        'pre_output': latex(
-                            card.pre_output_function(evaluated, var)),
-                        'parameters': card.card_info.get('parameters', [])
+                        'title': card.title_text(evaluated, components),
+                        'input': card.input_text(evaluated, components),
+                        'pre_output': card.pre_output_latex(evaluated, components),
+                        'parameters': list(card.parameters),
+                        'arguments': json.dumps(card.arguments)
                     })
                 except (SyntaxError, ValueError) as e:
                     pass
@@ -303,17 +275,18 @@ class SymPyGamma(object):
 
         return {
             'var': repr(variable),
-            'title': card.format_title(evaluated),
-            'input': card.format_input(repr(evaluated), components),
-            'pre_output': latex(card.pre_output_function(evaluated, variable))
+            'title': card.format_title(evaluated, components),
+            'input': card.format_input(evaluated, components),
+            'pre_output': card.pre_output_latex(evaluated, components)
         }
 
-    def eval_card(self, card_name, expression, variable, parameters):
-        card = get_card(card_name)
+    def eval_card(self, card_name, expression, variable, parameters, arguments):
+        cardClass = get_card(card_name)
 
-        if not card:
+        if not cardClass:
             raise KeyError
 
+        card = cardClass(*arguments)
         _, arguments, evaluator, evaluated = self.eval_input(expression)
         variable = sympy.Symbol(variable)
         components, cards, evaluated, _ = self.get_cards(arguments, evaluator, evaluated)
@@ -323,5 +296,5 @@ class SymPyGamma(object):
 
         return {
             'value': repr(result),
-            'output': card.format_output(result, mathjax_latex)
+            'output': card.output_latex(result)
         }

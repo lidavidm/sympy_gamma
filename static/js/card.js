@@ -1,5 +1,5 @@
 var Card = (function() {
-    function Card(card_name, variable, expr, parameters) {
+    function Card(card_name, variable, expr, parameters, args) {
         this.card_name = card_name;
         this._fullscreen = false;
 
@@ -10,6 +10,7 @@ var Card = (function() {
         this.expr = expr;
         this.parameters = parameters;
         this.parameterValues = {};
+        this.args = args;
 
         this._evaluateCallbacks = [];
         this.onEvaluate($.proxy(this.initApproximation, this));
@@ -34,7 +35,8 @@ var Card = (function() {
             var url = '/card/' + this.card_name;
             var parms = {
                 variable: this.variable,
-                expression: this.expr
+                expression: this.expr,
+                'arguments': JSON.stringify(this.args)
             };
             $.extend(parms, this.parameterValues);
             var deferred = $.getJSON(url, parms, finished);
@@ -308,7 +310,11 @@ var Card = (function() {
         // handle nested arrays
         var expr = encodeURIComponent(gammaToString(output.data('expr')));
         var parameters = output.data('parameters');
-        var card = new Card(card_name, variable, expr, parameters);
+        var args = output.data('arguments');
+        if (typeof args !== "undefined") {
+            args = JSON.parse(decodeURIComponent(args));
+        }
+        var card = new Card(card_name, variable, expr, parameters, args);
         card.setElement(el);
         el.data('card', card);
 

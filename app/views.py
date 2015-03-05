@@ -11,7 +11,7 @@ from google.appengine.runtime import DeadlineExceededError
 import sympy
 from logic.utils import Eval
 from logic.logic import SymPyGamma, mathjax_latex
-from logic.resultsets import get_card, find_result_set
+from logic.resultsets import find_result_set
 
 import settings
 import models
@@ -256,11 +256,13 @@ def random_example(request):
 def _process_card(request, card_name):
     variable = request.GET.get('variable')
     expression = request.GET.get('expression')
-    if not variable or not expression:
+    arguments = request.GET.get('arguments')
+    if not variable or not expression or not arguments:
         raise Http404
 
     variable = urllib2.unquote(variable)
     expression = urllib2.unquote(expression)
+    arguments = json.loads(urllib2.unquote(arguments))
 
     g = SymPyGamma()
 
@@ -268,14 +270,14 @@ def _process_card(request, card_name):
     for key, val in request.GET.items():
         parameters[key] = ''.join(val)
 
-    return g, variable, expression, parameters
+    return g, variable, expression, parameters, arguments
 
 
 def eval_card(request, card_name):
-    g, variable, expression, parameters = _process_card(request, card_name)
+    g, variable, expression, parameters, arguments = _process_card(request, card_name)
 
     try:
-        result = g.eval_card(card_name, expression, variable, parameters)
+        result = g.eval_card(card_name, expression, variable, parameters, arguments)
     except ValueError as e:
         return HttpResponse(json.dumps({
             'error': e.message
